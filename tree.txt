@@ -1,0 +1,213 @@
+#include<iostream>
+#include<string>
+using namespace std;
+
+// Structure for the linked list node (to store children of a tree node)
+struct ChildNode {
+    struct TreeNode* child; // Pointer to a tree node
+    ChildNode* next;        // Pointer to the next child in the linked list
+    ChildNode(TreeNode* c) : child(c), next(nullptr) {} // Constructor
+};
+
+// Structure for the tree node
+struct TreeNode {
+    string data;            // Value of the node
+    ChildNode* children;    // Linked list of children
+    TreeNode(string val) : data(val), children(nullptr) {} // Constructor
+};
+
+// Class to manage the tree
+class Tree {
+private:
+    TreeNode* root; // Root of the tree
+
+    // Helper function to find a node with the given value (preorder search)
+    TreeNode* findNode(TreeNode* node, string value) {
+        if(node == nullptr) return nullptr;
+        if(node->data == value) return node;
+
+        ChildNode* current = node->children;
+        while(current != nullptr) {
+            TreeNode* result = findNode(current->child, value);
+            if(result != nullptr) return result;
+            current = current->next;
+        }
+        return nullptr;
+    }
+
+    // Helper function to delete a subtree (used in delete operation and destructor)
+    void deleteSubtree(TreeNode* node) {
+        if(node == nullptr) return;
+
+        // Delete all children recursively
+        ChildNode* current = node->children;
+        while(current != nullptr) {
+            ChildNode* temp = current;
+            current = current->next;
+            deleteSubtree(temp->child);
+            delete temp;
+        }
+        delete node;
+    }
+
+    // Helper function for preorder traversal
+    void preorder(TreeNode* node) {
+        if(node == nullptr) return;
+
+        cout << node->data << " ";
+        ChildNode* current = node->children;
+        while(current != nullptr) {
+            preorder(current->child);
+            current = current->next;
+        }
+    }
+
+public:
+    Tree() : root(nullptr) {}
+
+    // Insert a child with value 'childVal' under parent with value 'parentVal'
+    void insert(string parentVal, string childVal) {
+        // Create the new child node
+        TreeNode* childNode = new TreeNode(childVal);
+
+        // If the tree is empty, make the child the root
+        if(root == nullptr) {
+            root = childNode;
+            cout << "Root created with value: " << childVal << endl;
+            return;
+        }
+
+        // Find the parent node
+        TreeNode* parent = findNode(root, parentVal);
+        if(parent == nullptr) {
+            cout << "Parent with value " << parentVal << " not found!" << endl;
+            delete childNode; // Clean up the unused node
+            return;
+        }
+
+        // Add the child to the parent's children linked list
+        ChildNode* newChild = new ChildNode(childNode);
+        newChild->next = parent->children;
+        parent->children = newChild;
+        cout << "Added " << childVal << " as a child of " << parentVal << endl;
+    }
+
+    // Delete a node with the given value and its subtree
+    void deleteNode(string value) {
+        if(root == nullptr) {
+            cout << "Tree is empty!" << endl;
+            return;
+        }
+
+        // Special case: deleting the root
+        if(root->data == value) {
+            deleteSubtree(root);
+            root = nullptr;
+            cout << "Root with value " << value << " deleted!" << endl;
+            return;
+        }
+
+        // Find the parent of the node to delete
+        TreeNode* parent = nullptr;
+        ChildNode* currentChild = nullptr;
+        bool found = false;
+
+        // Use a queue to perform a level-order search for the parent
+        TreeNode* queue[1000];
+        int front = 0, rear = 0;
+        queue[rear++] = root;
+
+        while(front < rear && !found) {
+            TreeNode* node = queue[front++];
+            ChildNode* current = node->children;
+            ChildNode* prevChild = nullptr;
+
+            while(current != nullptr) {
+                if(current->child->data == value) {
+                    parent = node;
+                    currentChild = current;
+                    if(prevChild == nullptr) {
+                        parent->children = current->next;
+                    } else {
+                        prevChild->next = current->next;
+                    }
+                    found = true;
+                    break;
+                }
+                prevChild = current;
+                queue[rear++] = current->child;
+                current = current->next;
+            }
+        }
+
+        if(!found) {
+            cout << "Node with value " << value << " not found!" << endl;
+            return;
+        }
+
+        // Delete the subtree rooted at the found node
+        deleteSubtree(currentChild->child);
+        delete currentChild;
+        cout << "Node with value " << value << " and its subtree deleted!" << endl;
+    }
+
+    // Perform preorder traversal to print the tree
+    void printPreorder() {
+        if(root == nullptr) {
+            cout << "Tree is empty!" << endl;
+            return;
+        }
+        cout << "Preorder traversal of the tree: ";
+        preorder(root);
+        cout << endl;
+    }
+
+    // Destructor to clean up the tree
+    ~Tree() {
+        deleteSubtree(root);
+    }
+};
+
+int main() {
+    Tree tree;
+    bool quit = false;
+    int choice;
+    string parentVal, childVal, deleteVal;
+
+    cout << "TREE OPERATIONS USING LINKED LIST" << endl;
+
+    while(!quit) {
+        cout << "\n1.Add a child" << endl;
+        cout << "2.Delete a node" << endl;
+        cout << "3.Print tree (preorder)" << endl;
+        cout << "4.Quit" << endl;
+        cout << "Enter your choice :- ";
+        cin >> choice;
+
+        switch(choice) {
+            case 1:
+                cout << "Enter parent value (or 'none' if adding root): ";
+                cin >> parentVal;
+                cout << "Enter child value: ";
+                cin >> childVal;
+                tree.insert(parentVal == "none" ? "" : parentVal, childVal);
+                break;
+            case 2:
+                cout << "Enter value to delete: ";
+                cin >> deleteVal;
+                tree.deleteNode(deleteVal);
+                break;
+            case 3:
+                tree.printPreorder();
+                break;
+            case 4:
+                quit = true;
+                break;
+            default:
+                cout << "That is not a valid input , quitting program" << endl;
+                quit = true;
+        }
+    }
+
+    return 0;
+}
